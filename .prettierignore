@@ -1,0 +1,20 @@
+# Build output & caches
+dist/
+build/
+coverage/
+node_modules/
+**/*.tsbuildinfo
+
+# Generated contract bindings (owned by the code generator)
+src/generated/
+
+# Vendored ZK proving artifacts & circuits inputs
+public/proofs/
+circuits/*.json
+
+# Rust build artifacts
+contracts/**/target/
+
+# Lock files (managed by their tools)
+package-lock.json
+contracts/**/Cargo.lock
