@@ -1,0 +1,128 @@
+name: CI
+
+# Runs on every push to main and on every pull request. This is the gate that
+# must pass on a fresh clone before code can be merged.
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+# Least privilege: CI only needs to read the repository. Individual jobs that
+# need more (e.g. dependency-review) request it explicitly.
+permissions:
+  contents: read
+
+# Cancel superseded runs on the same ref to save CI minutes.
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  # Deterministic, CI-friendly npm behaviour.
+  NPM_CONFIG_FUND: "false"
+  NPM_CONFIG_AUDIT: "false"
+
+jobs:
+  lint:
+    name: Lint, format & typecheck
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - run: npm ci
+      - name: Prettier formatting check
+        run: npm run format:check
+      - name: ESLint
+        run: npm run lint
+      - name: Typecheck (frontend)
+        run: npm run typecheck
+      - name: Typecheck (server)
+        run: npm run typecheck:server
+
+  test:
+    name: Unit tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - run: npm ci
+      - name: Run unit tests
+        run: npm test
+
+  frontend-build:
+    name: Frontend production build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - run: npm ci
+      - name: Build (tsc -b && vite build)
+        run: npm run build
+      - name: Upload dist artifact
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: frontend-dist
+          path: dist
+          retention-days: 7
+          if-no-files-found: error
+
+  contract-build:
+    name: Soroban contract build
+    runs-on: ubuntu-latest
+    env:
+      # Defensive: proc-macro-heavy dependencies (syn/darling/serde_derive)
+      # can overflow rustc's default thread stack on some hosts.
+      RUST_MIN_STACK: "536870912"
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Install pinned Rust toolchain
+        uses: dtolnay/rust-toolchain@2c7215f132e9ebf062739d9130488b56d53c060c # master
+        with:
+          toolchain: 1.93.0
+          targets: wasm32v1-none
+          components: rustfmt, clippy
+      - name: Cargo cache
+        uses: Swatinem/rust-cache@23869a5bd66c73db3c0ac40331f3206eb23791dc # v2.9.1
+        with:
+          workspaces: contracts/vault_market
+      - name: rustfmt check
+        working-directory: contracts/vault_market
+        run: cargo fmt --all --check
+      - name: Clippy (deny warnings)
+        working-directory: contracts/vault_market
+        run: cargo clippy --target wasm32v1-none --release -- -D warnings
+      - name: Build contract wasm
+        working-directory: contracts/vault_market
+        run: cargo build --target wasm32v1-none --release --locked
+      - name: Upload wasm artifact
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: vault-market-wasm
+          path: contracts/vault_market/target/wasm32v1-none/release/vault_market.wasm
+          retention-days: 7
+          if-no-files-found: error
+
+  dependency-review:
+    name: Dependency review
+    # Only meaningful on pull requests (compares base..head).
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Review dependency changes for known vulnerabilities
+        uses: actions/dependency-review-action@a1d282b36b6f3519aa1f3fc636f609c47dddb294 # v5.0.0
+        with:
+          fail-on-severity: high

@@ -1,0 +1,82 @@
+name: Deploy
+
+# Manual, opt-in deployment. It is intentionally NOT triggered automatically so
+# a fresh clone/fork never fails or deploys without credentials. Provide the
+# required secrets (see below) and run it from the Actions tab.
+#
+# Required secrets:
+#   VERCEL_TOKEN, VERCEL_ORG_ID, VERCEL_PROJECT_ID  -> frontend (Vercel)
+#   RAILWAY_TOKEN                                    -> resolver service (Railway)
+# A job whose secret is absent skips gracefully instead of failing.
+on:
+  workflow_dispatch:
+    inputs:
+      target:
+        description: What to deploy
+        type: choice
+        default: all
+        options: [all, frontend, resolver]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: deploy-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  frontend:
+    name: Deploy frontend (Vercel)
+    if: ${{ inputs.target == 'all' || inputs.target == 'frontend' }}
+    runs-on: ubuntu-latest
+    environment: production
+    env:
+      VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+      VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+      VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+    steps:
+      - name: Guard on credentials
+        id: guard
+        run: |
+          if [ -z "$VERCEL_TOKEN" ]; then
+            echo "VERCEL_TOKEN not set — skipping frontend deploy."
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+          fi
+      - if: steps.guard.outputs.skip != 'true'
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - if: steps.guard.outputs.skip != 'true'
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - if: steps.guard.outputs.skip != 'true'
+        run: npm ci
+      - name: Deploy to Vercel (production)
+        if: steps.guard.outputs.skip != 'true'
+        run: |
+          npx --yes vercel@latest pull --yes --environment=production --token="$VERCEL_TOKEN"
+          npx --yes vercel@latest build --prod --token="$VERCEL_TOKEN"
+          npx --yes vercel@latest deploy --prebuilt --prod --token="$VERCEL_TOKEN"
+
+  resolver:
+    name: Deploy resolver (Railway)
+    if: ${{ inputs.target == 'all' || inputs.target == 'resolver' }}
+    runs-on: ubuntu-latest
+    environment: production
+    env:
+      RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
+    steps:
+      - name: Guard on credentials
+        id: guard
+        run: |
+          if [ -z "$RAILWAY_TOKEN" ]; then
+            echo "RAILWAY_TOKEN not set — skipping resolver deploy."
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+          fi
+      - if: steps.guard.outputs.skip != 'true'
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Deploy to Railway
+        if: steps.guard.outputs.skip != 'true'
+        run: |
+          npm i -g @railway/cli
+          railway up --service vault-resolver --ci
