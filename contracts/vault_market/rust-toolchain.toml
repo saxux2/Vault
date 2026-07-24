@@ -1,0 +1,7 @@
+# Pinned toolchain for reproducible Soroban contract builds.
+# Rust >= 1.84 is required for the `wasm32v1-none` target that soroban-sdk 25 mandates.
+[toolchain]
+channel = "1.93.0"
+components = ["rustfmt", "clippy", "rust-src"]
+targets = ["wasm32v1-none"]
+profile = "minimal"
