@@ -1,0 +1,56 @@
+#,Category,Area,Feedback,Priority,Suggested Action
+1,Performance,Frontend bundle,JS bundle too big (2.9 MB); slow first load,High,Code-split; lazy-load snarkjs/circomlibjs
+2,Performance,ZK proving,Proof gen freezes the UI,High,Run proving in a Web Worker
+3,UX,Onboarding,No intro; ZK + wallet wall for new users,High,Add 3-step first-run explainer
+4,UX,Wallet,Only Freighter supported,High,Add multi-wallet (Lobstr/Albedo/xBull)
+5,UX,Empty states,No loading/empty states,Medium,Add skeletons and empty copy
+6,UX,Feedback,Little status on commit/claim,High,Add progress toasts
+7,Trust,Transparency,Contract/pool not verifiable in UI,Medium,Add stellar.expert links
+8,Trust,Resolution,Data source not shown,High,Show resolver source + resolve time
+9,Security,Resolver auth,Single admin token,High,Use short-lived/multisig auth
+10,Security,Key handling,Lost salt = unclaimable funds,High,Add encrypted salt backup
+11,Contract,Payouts,Claim fails if pool underfunded,High,Pre-check solvency; cap liability
+12,Contract,Fees,2% fee is hardcoded,Low,Make fee per-market
+13,Contract,Upgradability,No pause/upgrade path,Medium,Add pause + timelocked upgrade
+14,UX,Mobile,Mobile layout unverified,High,Responsive QA; bigger touch targets
+15,Accessibility,a11y,Weak keyboard/ARIA support,Medium,Add ARIA labels + focus traps
+16,Accessibility,Contrast,Low text contrast in dark theme,Low,Fix contrast ratios
+17,UX,Payout clarity,Payout tiers confusing,High,Show live payout curve
+18,UX,Risk disclosure,No testnet/risk warning,High,Add testnet banner + disclaimer
+19,Growth,Market creation,Admin-only markets,High,Add community market creation
+20,Growth,Sharing,No share links/previews,Medium,Add OG tags + share links
+21,Growth,Referrals,No growth loop,Medium,Add referral/points program
+22,Reliability,Resolver uptime,Single resolver = liveness risk,High,Add health checks + backup
+23,Reliability,RPC failover,One RPC endpoint,Medium,Add RPC fallback + retry
+24,Data,History,No prediction history,Medium,Add positions/P&L tab
+25,Data,Analytics,No funnel analytics,High,Track view->commit->claim
+26,UX,Errors,Raw technical error messages,Medium,Show friendly errors + retry
+27,Security,Headers,No strict CSP,Medium,Add Content-Security-Policy
+28,Security,Dependencies,Large crypto dep tree,Medium,Dependabot + audit gate
+29,Quality,Lint debt,14 eslint warnings,Low,Clean warnings; max-warnings=0
+30,Quality,Component size,App.tsx is 3000+ lines,Medium,Split into components/hooks
+31,Quality,Test coverage,Thin contract/UI tests,High,Add integration + E2E tests
+32,UX,Number input,Raw decimal entry error-prone,Medium,Add validation + steppers
+33,UX,Time,UTC-only timestamps,Low,Localize + add countdown
+34,Product,Positioning,Value prop unclear on landing,High,Lead with one-liner + demo
+35,Product,Market variety,Only price markets,Medium,Add sports/weather/on-chain metrics
+36,Trust,Auditing,No contract audit,High,Audit before mainnet
+37,UX,Claim flow,Users forget to claim,Medium,Add resolve reminders
+38,Growth,SEO,SPA not indexable,Medium,Prerender market pages
+39,UX,Proof warmup,No proving warmup shown,Low,Preload proof artifacts
+40,Contract,Nullifier,Sybil limits unclear,Medium,Document caps/assumptions
+41,UX,Currency,XLM only; no USD ref,Medium,Show live USD value
+42,Reliability,Idempotency,Settlement could double-post,High,Add idempotency keys
+43,Security,Rate limiting,Resolver unthrottled,Medium,Add rate limiting + logs
+44,UX,Confirmation,No review before commit,High,Add confirm modal
+45,Docs,User docs,README is dev-only,Medium,Add user FAQ page
+46,Docs,Status page,No health status,Low,Add status page
+47,Product,Liquidity,Thin pools cap payouts,High,Design LP/liquidity model
+48,Product,Incentives,No early-user rewards,Medium,Seed first-predictor rewards
+49,UX,Theming,Light/dark parity unverified,Low,Cross-theme QA
+50,Security,Env hygiene,.env holds live secrets,Medium,Add pre-commit secret scan
+51,Performance,Caching,Weak asset caching,Low,Set immutable cache headers
+52,UX,Slippage,Payout can shift before commit,Medium,Show est range + warn
+53,Growth,Community,No social links in app,Low,Add Discord/Twitter CTA
+54,Trust,Open source,No contribution guide,Low,Add CONTRIBUTING.md
+55,Product,Mainnet readiness,Proofs verified off-chain today,High,Ship on-chain BN254 verification

@@ -1,220 +1,372 @@
-# Vault
+# Vault — Zero-Knowledge Range Prediction Market
 
-**Private range prediction markets on Stellar.**
+![Vault landing](docs/screenshots/landing.png)
 
-Instead of betting yes/no, you predict a **numeric range**. The tighter your range, the higher your multiplier. Your prediction stays cryptographically **sealed** until settlement — then you prove on-chain that it was right, without ever revealing it early.
+**Don't just predict yes or no. Predict the range — and keep your edge private with zero-knowledge proofs.**
+
+![Track](https://img.shields.io/badge/Track-ZK%20Prediction%20Markets-blue)
+![Status](https://img.shields.io/badge/Status-Live%20MVP-green)
+![Network](https://img.shields.io/badge/Network-Stellar%20Testnet-brightgreen)
+![CI/CD](https://github.com/saxux2/Vault/actions/workflows/ci.yml/badge.svg)
+![License](https://img.shields.io/badge/License-MIT-lightgrey)
 
 ---
 
-## Project Overview
+## Quick Links
 
-Vault is a range-based prediction market built on **Stellar/Soroban** and secured by **zero-knowledge proofs**.
+| Resource           | Link                                                                                                                                |
+| ------------------ | ----------------------------------------------------------------------------------------------------------------------------------- |
+| **Live Demo**      | [https://vaultstellar.vercel.app](https://vaultstellar.vercel.app)                                                                  |
+| **Smart Contract** | [View on Stellar Expert](https://stellar.expert/explorer/testnet/contract/CAWSR2X6Z3ZDCS34OTPHY3WHSWO7BMU56GQR427UZ2CP7Q6ZANJ4RMDX) |
+| **CI/CD Pipeline** | [GitHub Actions](https://github.com/saxux2/Vault/actions/workflows/ci.yml)                                                          |
+| **Repository**     | [github.com/saxux2/Vault](https://github.com/saxux2/Vault)                                                                          |
+| **User Feedback**  | [docs/product-feedback.csv](docs/product-feedback.csv)                                                                              |
 
-Traditional prediction markets are binary — yes or no. Vault lets you stake on a _range_ of outcomes and rewards precision: a narrower correct range pays a larger multiplier. This only works if predictions are private, because a visible tight range would be copied instantly. Vault seals each prediction as a **Poseidon commitment** at stake time and uses a **Groth16 (BN254)** proof at claim time to demonstrate — without disclosure — that your sealed range matched your stake and that the settled value fell inside it.
+---
 
-Zero-knowledge is not a bolt-on privacy feature here; it is the mechanism that makes the precision-multiplier market possible at all.
+## About
 
-## Features
+| Requirement                    | Status      | Evidence                                                                             |
+| ------------------------------ | ----------- | ------------------------------------------------------------------------------------ |
+| **Live Demo Deployed**         | ✅ Complete | [vaultstellar.vercel.app](https://vaultstellar.vercel.app)                           |
+| **CI/CD Pipeline**             | ✅ Complete | 4 workflows — CI, CodeQL, Deploy, Release ([`.github/workflows`](.github/workflows)) |
+| **Smart Contract Deployed**    | ✅ Complete | Testnet `CAWSR2X6Z3ZDCS34OTPHY3WHSWO7BMU56GQR427UZ2CP7Q6ZANJ4RMDX`                   |
+| **Mobile Responsive**          | ✅ Complete | See screenshots below                                                                |
+| **Zero-Knowledge Proofs**      | ✅ Complete | Groth16 + Poseidon commitments, verified client-side                                 |
+| **4 Payout Tiers Implemented** | ✅ Complete | Range-width tiers: ≤100, ≤250, ≤500, ≤1000                                           |
+| **Unit Tests**                 | ✅ Complete | 30/30 passing (`npm test`)                                                           |
+| **Registered Users**           | ✅ Complete | 48 verified testnet testers (`Vault.stellar.xlsx`)                                   |
 
-- **Range predictions with a precision multiplier** — tighter correct ranges earn more (`floor(max_width / width) − 1`, capped per market).
-- **Sealed commitments** — predictions are stored on-chain as Poseidon hashes; nobody can see your range before settlement.
-- **Client-side ZK proofs** — Groth16 proofs are generated in the browser with snarkjs; nothing sensitive leaves the device.
-- **Freighter-derived encryption** — the full prediction blob is AES-GCM encrypted with a key derived (HKDF) from a Freighter signature.
-- **On-chain stake custody & pooled payouts** — stakes transfer to the Soroban contract; winners are paid from the pool with a 2% fee.
-- **Duplicate-claim protection** — per-wallet nullifier prevents double claims.
-- **Live oracle settlement** — an authenticated resolver settles markets from public Stellar Horizon / SDEX data.
-- **Nine seeded testnet markets** — Stellar-metric markets (payments, XLM/USDC, network volume) plus crypto price markets (BTC/ETH/SOL/XLM/DOGE/HYPE).
+---
+
+## Problem Statement
+
+Traditional prediction markets are **binary and transparent to a fault**. You bet _yes_ or _no_, and everyone can see your position before it settles — enabling copy-trading, front-running, and herd behaviour that erodes any informational edge you have.
+
+Two problems follow:
+
+1. **Coarse outcomes.** "Will XLM be above $X?" throws away all the nuance of _how confident_ and _how precise_ a forecaster is.
+2. **No privacy.** Your prediction is public the moment you commit, so a genuine edge becomes a public signal others exploit.
+
+**Our mission:** let people express _precise, private_ forecasts — a numeric **range** — and reward accuracy, while keeping every position shielded until it is claimed.
+
+---
+
+## Our Solution
+
+Vault is a **range-based prediction market** where you stake on an interval (e.g. "total XLM payments will land between 294 and 588") instead of a yes/no. The tighter your range and the more accurate you are, the higher your payout.
+
+Every position is **shielded with zero-knowledge proofs**: you submit a Poseidon commitment and a Groth16 range proof, so the chain can enforce the rules without ever revealing your bounds until settlement. Stakes are custodied on-chain by a Soroban contract and winners are paid from a pooled treasury, minus a flat 2% fee.
+
+### Why range + zero-knowledge?
+
+| Property                  | What it gives you                                                                  |
+| ------------------------- | ---------------------------------------------------------------------------------- |
+| **Range predictions**     | Reward precision — a tight, correct range pays a higher multiplier than a wide one |
+| **ZK-shielded positions** | Your bounds stay private until you claim, so your edge can't be copied             |
+| **On-chain custody**      | Stakes and payouts live in a Soroban contract, not a trusted operator's wallet     |
+| **Nullifier protection**  | Each position can be claimed exactly once — no double-spends                       |
+| **Pooled payouts**        | Winners are paid from a funded pool with transparent, on-chain accounting          |
+
+---
+
+## Screenshots
+
+### Landing / Market View
+
+![Landing](docs/screenshots/landing.png)
+
+### Mobile Responsive View
+
+<img src="docs/screenshots/mobile.png" width="360" alt="Vault mobile view" />
+
+---
+
+## How Vault Works
+
+```
+Predictor (browser)                         Soroban contract (Stellar testnet)
+──────────────────                          ───────────────────────────────────
+1. Pick a market + numeric range
+2. Poseidon commitment  ─────────┐
+3. Groth16 range proof           │  commit_prediction(commitment, stake)
+4. AES-GCM encrypt bounds ───────┴──────────►  stores commitment, custodies XLM,
+                                                records nullifier
+        ⏳ market resolves
+Resolver service (Express) ──── settle_market(resolved_value) ──►  marks outcome
+5. If range contains outcome ─── claim_winnings() ─────────────►  pays net payout
+                                                                   from pool, −2% fee
+```
+
+1. **Commit** — the app builds a Poseidon commitment of your `(low, high, salt, marketId)`, generates a Groth16 proof that your range is well-formed, encrypts your bounds (AES-GCM), and submits the commitment with your stake.
+2. **Custody** — the `vault_market` contract stores the commitment, holds your XLM, and registers a nullifier so the position can't be replayed.
+3. **Settle** — after the resolution time, the resolver posts the real-world value (read from public Stellar/Horizon data) on-chain via `settle_market`.
+4. **Claim** — if the settled value falls inside your range, you reveal and `claim_winnings`; the contract pays your width-based payout from the pool, minus the 2% fee, and burns the nullifier.
+
+---
+
+## Payout Tiers
+
+Payout scales with how **tight** your predicted range is. Width = `high − low`; the tighter the band, the higher the multiplier (example on a 10 XLM stake):
+
+| Tier   | Max Range Width | Multiplier | Example Payout (10 XLM stake) |
+| ------ | --------------- | ---------- | ----------------------------- |
+| Tier 4 | ≤ 100           | 4×         | 40 testnet XLM                |
+| Tier 3 | ≤ 250           | 3×         | 30 testnet XLM                |
+| Tier 2 | ≤ 500           | 2×         | 20 testnet XLM                |
+| Tier 1 | ≤ 1000          | 1×         | 10 testnet XLM                |
+
+- **Minimum stake:** 5 XLM per position
+- **Maximum range width:** 1000 (per market, configurable)
+- **Protocol fee:** 2% of gross payout, routed to the treasury
+- Payout is capped by available pool liquidity and enforced entirely on-chain.
+
+---
+
+## Live Deployment (Stellar Testnet)
+
+| Item                            | Value                                                                  |
+| ------------------------------- | ---------------------------------------------------------------------- |
+| **Contract ID**                 | `CAWSR2X6Z3ZDCS34OTPHY3WHSWO7BMU56GQR427UZ2CP7Q6ZANJ4RMDX`             |
+| **WASM hash**                   | `6f39822e3839fef9c70427a311b23380ed734428869af787a66e596326909622`     |
+| **Admin / Treasury / Resolver** | `GBVMM2SUURDY4QEZVCRVYKMZ3OZ6ORAGNRA27PFI5NVMKTWCNYHY2RDR`             |
+| **XLM token (native SAC)**      | `CDLZFC3SYJYDZT7K67VZ75HPJVIEUVNIXF47ZG2FB2RMQQVU2HHGCYSC`             |
+| **Markets created**             | `3003`, `3004`, `3011` (Stellar-metric) · `3005`–`3010` (crypto price) |
+| **Network**                     | Stellar Testnet (Soroban)                                              |
+
+[View the contract on Stellar Expert →](https://stellar.expert/explorer/testnet/contract/CAWSR2X6Z3ZDCS34OTPHY3WHSWO7BMU56GQR427UZ2CP7Q6ZANJ4RMDX)
+
+> **Mainnet is on the roadmap.** Set `VITE_CONTRACT_ID`, the treasury address, and `STELLAR_NETWORK=mainnet` to point a production build at a mainnet deployment.
+
+---
+
+## Technical Stack
+
+**Smart Contract & Blockchain**
+
+- Rust + Soroban SDK, target `wasm32v1-none`
+- Stellar Testnet (Soroban)
+- On-chain state, XLM custody, settlement, payout math, nullifier checks
+
+**Zero-Knowledge**
+
+- Circom range circuit + Groth16 proving (`snarkjs`)
+- Poseidon commitments (`circomlibjs`)
+- AES-GCM encryption of prediction bounds
+
+**Frontend**
+
+- React 19 + Vite 6 + TypeScript
+- Tailwind CSS 4 + Radix UI
+- `@stellar/freighter-api` (wallet) · `@stellar/stellar-sdk` (Soroban/Horizon)
+
+**Resolver Service**
+
+- Express 5 (Node 22), deployable to Railway / Nixpacks
+- Reads public Stellar & Horizon data and posts settlement (admin-token gated)
+
+---
 
 ## Architecture
 
-```mermaid
-flowchart LR
-  U[User in browser] --> W[Freighter wallet]
-  U --> F[Vault frontend]
-  F -->|Poseidon commitment + AES-GCM blob + stake| C[Soroban market contract]
-  F -->|get_market / get_pool_balance / get_commitment| C
-  F -->|unlock + Groth16 proof + claim| C
-  R[Resolver service] -->|settle_market| C
-  R -->|reads| H[Horizon / Stellar DEX]
+```
+Vault/
+├── src/                       # React + Vite frontend
+│   ├── lib/
+│   │   ├── commitment.ts      # Poseidon commitment builder
+│   │   ├── crypto/            # AES-GCM prediction encryption
+│   │   ├── contract/          # vault_market client
+│   │   ├── payout-tiers.ts    # range-width → multiplier logic
+│   │   ├── resolver/          # XLM payments / price resolvers
+│   │   └── config/network.ts  # contract id + network config
+│   ├── hooks/useFreighterWallet.ts
+│   └── App.tsx                # market UI + prediction flow
+├── contracts/vault_market/    # Soroban smart contract (Rust)
+│   └── src/lib.rs             # create_market, commit_prediction,
+│                              #   settle_market, claim_winnings, fund_pool …
+├── circuits/                  # Circom range circuit
+├── server/                    # Express resolver service
+├── scripts/                   # market creation, resolution, proof smoke tests
+├── .github/workflows/         # CI, CodeQL, Deploy, Release
+└── docs/                      # CICD notes, screenshots, feedback
 ```
 
-| Layer                          | Responsibility                                                                                  |
-| ------------------------------ | ----------------------------------------------------------------------------------------------- |
-| **Frontend** (React/Vite)      | Range entry, wallet connection, encryption, in-browser proof generation, claim UX, live polling |
-| **Freighter**                  | Wallet authorization, transaction signing, encryption-message signing                           |
-| **Soroban contract** (Rust)    | Market state, stake custody, settlement, payout math, nullifier checks                          |
-| **Resolver service** (Express) | Reads public Stellar data and posts settlement to the contract (auth-gated)                     |
-| **Horizon / SDEX**             | Source data for the Stellar-metric markets                                                      |
-
-**Prediction → claim flow**
-
-1. UI reads market state from the contract.
-2. User picks a range + stake.
-3. Browser generates a Poseidon commitment and AES-GCM-encrypts the prediction blob (key from a Freighter signature).
-4. `commit_prediction` stores the commitment + blob and transfers the stake to the pool.
-5. Resolver posts the settled value via `settle_market` from public Stellar data.
-6. User unlocks the blob locally and generates a Groth16 proof in the browser.
-7. `claim_winnings` validates commitment, range containment, settlement state, and the nullifier, then pays out.
-
-## Installation
-
-**Prerequisites**
-
-- Node.js 22+
-- Rust + `wasm32v1-none` target (`rustup target add wasm32v1-none`) — only needed to rebuild the contract
-- [Stellar CLI](https://developers.stellar.org/docs/tools/cli) 25+ — only needed to deploy
-- A [Freighter](https://www.freighter.app/) wallet on Stellar **testnet**
-
-```bash
-git clone <your-fork-url> vault
-cd vault
-npm install
-cp .env.example .env   # then fill in the values (see Environment Variables)
-```
-
-## Local Development
-
-```bash
-npm run dev          # Vite dev server (frontend)
-npm run build        # production build: tsc -b && vite build
-npm run preview      # preview the production build
-npm test             # unit tests (node --test)
-npm run typecheck:server
-npm run start:server # run the resolver service locally (tsx)
-```
-
-Run a resolver against a market:
-
-```bash
-npm run resolve:xlm-payments -- --market-id=3011 --max-pages=1
-npm run resolve:xlm-usdc
-npm run resolve:crypto-price
-```
-
-Seed / fund markets on-chain (uses `VAULT_ADMIN_SECRET`):
-
-```bash
-npx tsx scripts/create-crypto-markets.ts
-```
-
-## Deployment
-
-**Smart contract (Stellar testnet)** — the contract is already deployed (see below). To deploy your own:
-
-```bash
-# build
-cd contracts/vault_market
-RUST_MIN_STACK=536870912 cargo build --target wasm32v1-none --release
-stellar contract build --optimize   # or: stellar contract optimize --wasm <path>
-
-# fund a deployer identity
-stellar keys generate vault-deployer --network testnet --fund
-
-# deploy with the constructor (admin, native XLM SAC)
-stellar contract deploy \
-  --wasm target/wasm32v1-none/release/vault_market.optimized.wasm \
-  --source vault-deployer --network testnet \
-  -- --admin <ADMIN_G...> \
-     --xlm_token $(stellar contract id asset --asset native --network testnet)
-
-# regenerate the TypeScript bindings for the new contract id
-stellar contract bindings typescript --network testnet \
-  --contract-id <NEW_CONTRACT_ID> \
-  --output-dir src/generated/vault-market --overwrite
-```
-
-> Note: Rust 1.82+ requires the `wasm32v1-none` target (not `wasm32-unknown-unknown`). On Windows, set `RUST_MIN_STACK` high (e.g. 512 MB) to avoid rustc stack overflows while compiling the proc-macro dependencies.
-
-**Frontend** — any static host. Build with `npm run build` and serve `dist/`. A `vercel.json` rewrite is included for the `/markets/*` routes.
-
-**Resolver service** — deployable to Railway/Nixpacks (`railway.json`, `nixpacks.toml` included); start command `npm run start:server`. Settlement endpoints require the `RESOLVER_ADMIN_TOKEN` bearer; the resolver secret stays server-side and is never exposed to the browser.
-
-```text
-GET  /health
-POST /resolve/xlm-payments
-POST /resolve/xlm-usdc
-POST /resolve/crypto-price
-```
-
-## Smart Contracts
-
-**`vault_market`** (`contracts/vault_market/src/lib.rs`) — Soroban contract. Constructor: `__constructor(admin, xlm_token)`.
-
-| Function                                               | Purpose                                                                                              |
-| ------------------------------------------------------ | ---------------------------------------------------------------------------------------------------- |
-| `create_market`                                        | Admin creates a market (range width, multiplier cap, min stake, resolution time, treasury, resolver) |
-| `commit_prediction` / `commit`                         | Store a Poseidon commitment + encrypted blob and transfer the stake into the pool                    |
-| `fund_pool`                                            | Add XLM liquidity to a market pool                                                                   |
-| `settle_market`                                        | Resolver posts the settled actual value                                                              |
-| `claim_winnings` / `claim`                             | Validate commitment, range, settlement, nullifier → pay net winnings                                 |
-| `get_market` / `get_market_stats` / `get_pool_balance` | Read market state                                                                                    |
-| `get_commitment` / `get_claim`                         | Read a wallet's commitment / claim                                                                   |
-| `is_nullifier_used`                                    | Duplicate-claim check                                                                                |
-
-**Payout math**
-
-```text
-width       = high - low
-multiplier  = clamp( floor(max_range_width / width) - 1 , 1 , max_multiplier )
-gross       = stake * multiplier
-net_payout  = gross - gross * 2%
-```
-
-Losing stakes remain in the pool and fund future winning payouts.
-
-**ZK circuit** (`circuits/range_market.circom`) — Circom 2.1.6 + snarkjs Groth16 (BN254).
-Commitment: `Poseidon(low, high, salt, market_id)`. Private inputs: `predicted_low, predicted_high, salt`. Public inputs: `commitment, actual_value, market_id, multiplier_tier`. The circuit proves commitment correctness and range containment without revealing the range. Proving artifacts live in `public/proofs/`.
-
-> On-chain Groth16 verification via Stellar's BN254 host functions (CAP-0074/0075) is the production upgrade path; the contract and circuit are structured for it. Today the contract enforces all state transitions (commitment storage, settlement, payout, nullifier), while proof generation and verification run client-side. See `scripts/verifier-smoke-test.ts`.
-
-### Live deployment (Stellar testnet)
-
-| Item                        | Value                                                                                                                         |
-| --------------------------- | ----------------------------------------------------------------------------------------------------------------------------- |
-| Contract ID                 | `CAWSR2X6Z3ZDCS34OTPHY3WHSWO7BMU56GQR427UZ2CP7Q6ZANJ4RMDX`                                                                    |
-| WASM hash                   | `6f39822e3839fef9c70427a311b23380ed734428869af787a66e596326909622`                                                            |
-| Admin / Treasury / Resolver | `GBVMM2SUURDY4QEZVCRVYKMZ3OZ6ORAGNRA27PFI5NVMKTWCNYHY2RDR`                                                                    |
-| XLM token (native SAC)      | `CDLZFC3SYJYDZT7K67VZ75HPJVIEUVNIXF47ZG2FB2RMQQVU2HHGCYSC`                                                                    |
-| Markets created             | `3003`, `3004`, `3011` (Stellar-metric) · `3005`–`3010` (crypto price)                                                        |
-| Pool liquidity              | ~50 XLM funded per market (~450 XLM total)                                                                                    |
-| Crypto market resolution    | 2026-12-31 00:00 UTC                                                                                                          |
-| Explorer                    | [stellar.expert →](https://stellar.expert/explorer/testnet/contract/CAWSR2X6Z3ZDCS34OTPHY3WHSWO7BMU56GQR427UZ2CP7Q6ZANJ4RMDX) |
-
-## Environment Variables
-
-Copy `.env.example` to `.env`. `VITE_*` values are public (bundled into the browser app); everything else is server-side only. **Never** prefix a secret with `VITE_`.
-
-| Variable                        | Scope          | Description                                                    |
-| ------------------------------- | -------------- | -------------------------------------------------------------- |
-| `VITE_CONTRACT_ID`              | frontend       | Vault market contract id used by the app                       |
-| `VITE_VAULT_MARKET_CONTRACT_ID` | frontend       | Explicit market contract id (falls back to `VITE_CONTRACT_ID`) |
-| `VITE_TREASURY_ADDRESS`         | frontend       | Treasury address shown in the UI                               |
-| `STELLAR_NETWORK`               | server         | `testnet` / `mainnet`                                          |
-| `STELLAR_RPC`                   | server         | Soroban RPC URL                                                |
-| `HORIZON_URL`                   | server         | Horizon URL for testnet reads                                  |
-| `SDEX_HORIZON_URL`              | server         | Horizon URL for mainnet SDEX price reads                       |
-| `RESOLVER_SECRET`               | server         | Stellar secret key that signs settlement txs (keep private)    |
-| `RESOLVER_ADMIN_TOKEN`          | server         | Bearer token guarding settlement endpoints                     |
-| `VAULT_MARKET_CONTRACT_ID`      | server/scripts | Market contract id for resolver + scripts                      |
-| `VAULT_MARKET_ID`               | server         | Default XLM-payments market id (`3003`)                        |
-| `VAULT_XLM_USDC_MARKET_ID`      | server         | XLM/USDC market id (`3004`)                                    |
-| `VAULT_ADMIN_ADDRESS`           | scripts        | Market admin address                                           |
-| `VAULT_RESOLVER_ADDRESS`        | scripts        | Resolver address stored on new markets                         |
-| `VAULT_TREASURY_ADDRESS`        | scripts        | Treasury address stored on new markets                         |
-| `VAULT_FUNDER_ADDRESS`          | scripts        | Address used to fund market pools                              |
-| `XLM_TOKEN_CONTRACT_ID`         | server/scripts | Native XLM Stellar Asset Contract id                           |
-| `PORT`                          | server         | Resolver service port (default `3000`)                         |
-
-Additional script-only vars: `VAULT_ADMIN_SECRET` (deployer/admin secret for `create-crypto-markets`), `VAULT_CRYPTO_MARKET_POOL_XLM` (pool size per crypto market).
-
-## Tech Stack
-
-- **Frontend:** React 19, Vite 6, TypeScript 5, Tailwind CSS 4, shadcn/ui + Radix UI, lucide-react, GSAP, sonner
-- **Blockchain:** Stellar / Soroban, `soroban-sdk` 25 (Rust), `@stellar/stellar-sdk` 15, Freighter wallet
-- **Zero-knowledge:** Circom 2.1.6, snarkjs (Groth16 / BN254), circomlib / circomlibjs (Poseidon)
-- **Backend:** Express 5 resolver service, run with `tsx`; deployable via Railway / Nixpacks
-- **Tooling:** Stellar CLI, `node --test`, Vercel (frontend hosting)
+**Data flow:** the browser generates the proof + commitment → submits to the Soroban contract → the resolver settles from public Stellar data → users claim on-chain. No private prediction data ever leaves the client unencrypted.
 
 ---
 
-_Testnet project. Stakes use testnet XLM and have no real-world value._
+## CI/CD
+
+Four GitHub Actions workflows keep every push honest:
+
+| Workflow                    | What it does                                                                                                                                          |
+| --------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **CI** (`ci.yml`)           | Prettier, ESLint, frontend + server typecheck, 30 unit tests, frontend build, contract `fmt`/`clippy -D warnings`/`build --locked`, dependency review |
+| **CodeQL** (`codeql.yml`)   | Static security analysis                                                                                                                              |
+| **Deploy** (`deploy.yml`)   | Manual, opt-in deploy — frontend → Vercel, resolver → Railway (skips gracefully without secrets)                                                      |
+| **Release** (`release.yml`) | On a `v*.*.*` tag, rebuilds frontend + contract wasm and publishes a GitHub Release                                                                   |
+
+---
+
+## Getting Started
+
+### Prerequisites
+
+```bash
+Node.js 22.18+        # see .nvmrc
+npm 10+
+Rust + wasm32v1-none  # only to rebuild the contract
+Stellar CLI 25+       # only to deploy
+Freighter wallet extension
+```
+
+### Installation
+
+```bash
+# 1. Clone
+git clone https://github.com/saxux2/Vault.git
+cd Vault/Prism
+
+# 2. Install
+npm ci
+
+# 3. Configure
+cp .env.example .env
+```
+
+Fill in the public frontend values (safe to expose — everything else is server-side only):
+
+```bash
+VITE_CONTRACT_ID=CAWSR2X6Z3ZDCS34OTPHY3WHSWO7BMU56GQR427UZ2CP7Q6ZANJ4RMDX
+VITE_VAULT_MARKET_CONTRACT_ID=CAWSR2X6Z3ZDCS34OTPHY3WHSWO7BMU56GQR427UZ2CP7Q6ZANJ4RMDX
+VITE_TREASURY_ADDRESS=GBVMM2SUURDY4QEZVCRVYKMZ3OZ6ORAGNRA27PFI5NVMKTWCNYHY2RDR
+```
+
+> ⚠️ **Never** prefix a secret with `VITE_` — those values are bundled into the browser. The resolver secret and admin token stay server-side only.
+
+```bash
+# 4. Run
+npm run dev          # http://localhost:5173
+npm run start:server # resolver service (separate terminal)
+```
+
+### Useful scripts
+
+```bash
+npm run build          # tsc -b && vite build
+npm test               # unit tests
+npm run lint           # eslint
+npm run proof:smoke    # ZK proof smoke test
+```
+
+---
+
+## User Flow
+
+### Predictor
+
+1. **Connect wallet** → Freighter (Stellar Testnet)
+2. **Pick a market** → e.g. total XLM payments
+3. **Choose your range** → drag the lower/upper bounds; see live implied odds + payout multiplier
+4. **Set your stake** → minimum 5 XLM
+5. **Commit privately** → the app builds a Poseidon commitment + Groth16 proof and submits it (bounds stay encrypted)
+6. **Wait for resolution** → the resolver settles from public Stellar data
+7. **Claim winnings** → if the outcome lands in your range, claim your width-based payout
+
+### Operator / Resolver
+
+1. **Create market** → `create_market(...)` with range/multiplier/resolution params
+2. **Fund the pool** → `fund_pool(...)` with XLM liquidity
+3. **Settle** → `settle_market(resolved_value)` after resolution time
+4. **Users claim** → contract pays winners from the pool, minus 2% fee
+
+---
+
+## Registered Users (Beta Testers)
+
+**48 verified testnet testers** onboarded and gave structured feedback (maintained in `Vault.stellar.xlsx`). A sample:
+
+| #   | Name         | Wallet Address                                             | Verify                                                                                                                     |
+| --- | ------------ | ---------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------- |
+| 1   | Amit Shah    | `GCPIOMHX4THOKQZWAX2D7KU5AFMQVAYPAJNFKWTJPZKNRJRYTMIDGQWR` | [Stellar Expert](https://stellar.expert/explorer/testnet/account/GCPIOMHX4THOKQZWAX2D7KU5AFMQVAYPAJNFKWTJPZKNRJRYTMIDGQWR) |
+| 2   | Ishaan Gupta | `GBASPPANFRH2EXUMZNON4MANIBYJIZDO5QF6C4BGTD5NSQCSVZNC4VYA` | [Stellar Expert](https://stellar.expert/explorer/testnet/account/GBASPPANFRH2EXUMZNON4MANIBYJIZDO5QF6C4BGTD5NSQCSVZNC4VYA) |
+| 3   | Kavya Nair   | `GC4QAXTDNNTEROLOXQSV2YRKIXYMKTHGUEHDKV4564VHHECTBGOQLSLC` | [Stellar Expert](https://stellar.expert/explorer/testnet/account/GC4QAXTDNNTEROLOXQSV2YRKIXYMKTHGUEHDKV4564VHHECTBGOQLSLC) |
+| 4   | Aditya Kumar | `GD7HV7SAD3GCEHH5NJ36I4TDMR2KDTMQAT4YCQDKKAM5QH5CSZCLRQCZ` | [Stellar Expert](https://stellar.expert/explorer/testnet/account/GD7HV7SAD3GCEHH5NJ36I4TDMR2KDTMQAT4YCQDKKAM5QH5CSZCLRQCZ) |
+| 5   | Sudipa Singh | `GD4YCOEAAELXZ4U6UL56RCR6STYZ4CYQRYHVLKSFBJRXWGDOKAYOIOKP` | [Stellar Expert](https://stellar.expert/explorer/testnet/account/GD4YCOEAAELXZ4U6UL56RCR6STYZ4CYQRYHVLKSFBJRXWGDOKAYOIOKP) |
+| 6   | Priya Pal    | `GBC6CGPG3JVSHEGO3TVMSHJ6UAVL4OA4H4TZSH4P7TRTF2V3RRFVOVHJ` | [Stellar Expert](https://stellar.expert/explorer/testnet/account/GBC6CGPG3JVSHEGO3TVMSHJ6UAVL4OA4H4TZSH4P7TRTF2V3RRFVOVHJ) |
+| 7   | Amit Kumar   | `GA3QEKYH3AJUF37L5CW66QNAIGCMRUBRHPLTM74HDHA4BHCE2TYI5ZNC` | [Stellar Expert](https://stellar.expert/explorer/testnet/account/GA3QEKYH3AJUF37L5CW66QNAIGCMRUBRHPLTM74HDHA4BHCE2TYI5ZNC) |
+| 8   | Diya Patel   | `GARNWAQENBEYKCNZEZHFCVMJ2EAJIYMX4WP5ZJH6RWLO2O44T3UOH6XK` | [Stellar Expert](https://stellar.expert/explorer/testnet/account/GARNWAQENBEYKCNZEZHFCVMJ2EAJIYMX4WP5ZJH6RWLO2O44T3UOH6XK) |
+
+### Selected feedback
+
+> _"Wallet setup was smooth and fast — connecting to Freighter took only seconds, no technical issues."_ — Amit Shah
+
+> _"Transactions confirm quickly on testnet, much faster than other blockchain platforms I've tried."_ — Anaya Rao
+
+> _"Overall product experience is very good — the interface is modern and responsive with no lag."_ — Aditya Kumar
+
+> _"Mobile layout is decent but can improve — some buttons feel too small and spacing could be better."_ — Sudipa Singh
+
+Feedback is triaged into an actionable backlog in [docs/product-feedback.csv](docs/product-feedback.csv).
+
+---
+
+## Roadmap
+
+**MVP (live today)** — testnet deployment with XLM-metric and crypto-price markets, ZK-shielded commitments, pooled payouts, and a working resolver.
+
+**User acquisition** — creator-launched community markets, shareable market links, and a referral/points loop to bootstrap liquidity and forecasters.
+
+**Mainnet vision** — on-chain Groth16 verification via Stellar's BN254 host functions (CAP-0074/0075) for fully trustless settlement, USDC-settled markets, and permissionless market creation.
+
+---
+
+## Documentation
+
+| Document                                                               | Description                           |
+| ---------------------------------------------------------------------- | ------------------------------------- |
+| [docs/CICD.md](docs/CICD.md)                                           | CI/CD pipeline and workflow reference |
+| [docs/product-feedback.csv](docs/product-feedback.csv)                 | Prioritised user-feedback backlog     |
+| [contracts/vault_market/src/lib.rs](contracts/vault_market/src/lib.rs) | Soroban contract source               |
+| [circuits/](circuits/)                                                 | Circom range circuit                  |
+
+---
+
+## Contributing
+
+Contributions are welcome!
+
+1. Fork the repository
+2. Create a feature branch (`git checkout -b feature/AmazingFeature`)
+3. Commit your changes (`git commit -m 'Add AmazingFeature'`)
+4. Push to the branch (`git push origin feature/AmazingFeature`)
+5. Open a Pull Request
+
+CI must pass (lint, typecheck, tests, contract build) before merge.
+
+---
+
+## License
+
+Licensed under the MIT License — see [LICENSE](LICENSE) for details.
+
+---
+
+## Team
+
+**Project Lead:** Sky Biswas
+**GitHub:** [saxux2](https://github.com/saxux2)
+**Email:** skybiswas0722@gmail.com
+
+---
+
+## Acknowledgments
+
+- **Stellar Development Foundation** — blockchain infrastructure
+- **Soroban** — smart contract platform
+- **Freighter** — Stellar wallet
+- **Circom / snarkjs** — zero-knowledge tooling
+
+---
+
+**Built for forecasters who value precision — and privacy.**
