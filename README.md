@@ -20,7 +20,7 @@
 | **Smart Contract** | [View on Stellar Expert](https://stellar.expert/explorer/testnet/contract/CAWSR2X6Z3ZDCS34OTPHY3WHSWO7BMU56GQR427UZ2CP7Q6ZANJ4RMDX) |
 | **CI/CD Pipeline** | [GitHub Actions](https://github.com/saxux2/Vault/actions/workflows/ci.yml)                                                          |
 | **Repository**     | [github.com/saxux2/Vault](https://github.com/saxux2/Vault)                                                                          |
-| **User Feedback**  | [https://docs.google.com/spreadsheets/d/1ncMpbtw-hkPa4T6MqX4ThSEJHTQLUg9E/edit?usp=sharing&ouid=111714689887169940071&rtpof=true&sd=true)                                                                              |
+| **User Feedback**  | [Drive Link](https://docs.google.com/spreadsheets/d/1ncMpbtw-hkPa4T6MqX4ThSEJHTQLUg9E/edit?usp=sharing&ouid=111714689887169940071&rtpof=true&sd=true)                                                                              |
 
 ---
 
