@@ -30,7 +30,7 @@ jobs:
       - name: Package dist
         run: |
           tar -czf vault-frontend-${{ github.ref_name }}.tar.gz -C dist .
-      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: release-frontend
           path: vault-frontend-${{ github.ref_name }}.tar.gz
@@ -55,7 +55,7 @@ jobs:
         run: cargo build --target wasm32v1-none --release --locked
       - name: Stage wasm asset
         run: cp contracts/vault_market/target/wasm32v1-none/release/vault_market.wasm vault_market-${{ github.ref_name }}.wasm
-      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: release-contract
           path: vault_market-${{ github.ref_name }}.wasm
